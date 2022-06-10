@@ -3,3 +3,4 @@
 - WQC - ingame token
 - WQTVesting - WQT vesting 
 - ENRQ - Energy Cube NFT
+- WQWallet - in-game wallet
