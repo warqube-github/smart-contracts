@@ -15,21 +15,21 @@ contract WQWallet is Ownable {
     
     constructor(){}
     
-    function DepositERC20(address _tokenContract, uint256 _amount) external{
+    function DepositERC20(address _tokenContract, uint256 _amount, address _walletAddress) external{
         require(IERC20(_tokenContract).balanceOf(msg.sender) > _amount, "ERROR:Low Balance");
         IERC20(_tokenContract).transferFrom(msg.sender, address(this), _amount);
-        ERC20Holders[msg.sender][_tokenContract] += _amount;
+        ERC20Holders[_walletAddress][_tokenContract] += _amount;
     }
-    function DepositERC721(address _tokenContract, uint256 _tokenId) external{
+    function DepositERC721(address _tokenContract, uint256 _tokenId, address _walletAddress) external{
         require(IERC721(_tokenContract).ownerOf(_tokenId) == msg.sender, "ERROR:Your are not owner of this token");
         IERC721(_tokenContract).safeTransferFrom(msg.sender, address(this), _tokenId);
-        ERC721Holders[msg.sender][_tokenContract] = _tokenId;
+        ERC721Holders[_walletAddress][_tokenContract] = _tokenId;
     }
 
-    function DepositERC1155(address _tokenContract, uint256 _amount, uint256 _tokenId) external{
+    function DepositERC1155(address _tokenContract, uint256 _amount, uint256 _tokenId, address _walletAddress) external{
         require(IERC1155(_tokenContract).balanceOf(msg.sender, _tokenId) > _amount, "ERROR:Low Balance");
         IERC1155(_tokenContract).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
-        ERC1155Holders[msg.sender][_tokenContract][_tokenId] += _amount;
+        ERC1155Holders[_walletAddress][_tokenContract][_tokenId] += _amount;
     }
 
     function TransferERC20(address _tokenContract, address _to, uint256 _amount) external {
