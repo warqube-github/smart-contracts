@@ -10,20 +10,51 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract WQWallet is Ownable {
        
     mapping(address => mapping (address => uint256)) public ERC20Holders;
-    mapping(address => mapping (address => uint256)) public ERC721Holders;
+    mapping(address => mapping (address => uint256[])) public ERC721Holders;
     mapping(address => mapping (address => mapping(uint256 => uint256))) public ERC1155Holders;
     
     constructor(){}
     
+    modifier checkERC721Holder(address _tokenContract, uint256[] calldata _tokenIds) {
+        bool checkHolder = false;
+        uint256 len = _tokenIds.length;
+        for (uint256 j; j < len; ++j) {
+            for(uint256 i = 0; i < ERC721Holders[msg.sender][_tokenContract].length; i++){
+                if(ERC721Holders[msg.sender][_tokenContract][i] == _tokenIds[j]){
+                    checkHolder = true;
+                    break;
+                }
+            }
+            assert(checkHolder);
+            checkHolder = false;
+        }
+        _;
+    }
+
+    function removeItemfromERC721Holders(address owner, address _tokenContract, uint256 _tokenId) private {
+         for(uint256 i = 0; i < ERC721Holders[owner][_tokenContract].length; i++) {
+            uint256 arrayLength = ERC721Holders[owner][_tokenContract].length;
+            if(ERC721Holders[owner][_tokenContract][i] == _tokenId){
+                ERC721Holders[owner][_tokenContract][i] = ERC721Holders[owner][_tokenContract][arrayLength - 1];
+                ERC721Holders[owner][_tokenContract].pop();
+                break;
+            }
+        }
+    }
+
     function DepositERC20(address _tokenContract, uint256 _amount, address _walletAddress) external{
         require(IERC20(_tokenContract).balanceOf(msg.sender) > _amount, "ERROR:Low Balance");
         IERC20(_tokenContract).transferFrom(msg.sender, address(this), _amount);
         ERC20Holders[_walletAddress][_tokenContract] += _amount;
     }
-    function DepositERC721(address _tokenContract, uint256 _tokenId, address _walletAddress) external{
-        require(IERC721(_tokenContract).ownerOf(_tokenId) == msg.sender, "ERROR:Your are not owner of this token");
-        IERC721(_tokenContract).safeTransferFrom(msg.sender, address(this), _tokenId);
-        ERC721Holders[_walletAddress][_tokenContract] = _tokenId;
+
+    function DepositERC721(address _tokenContract, uint256[] calldata _tokenIds, address _walletAddress) external{
+        uint256 len = _tokenIds.length;
+        for (uint256 i; i < len; ++i) {
+            require(IERC721(_tokenContract).ownerOf(_tokenIds[i]) == msg.sender, "ERROR:Your are not owner of this token");
+            IERC721(_tokenContract).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
+            ERC721Holders[_walletAddress][_tokenContract].push(_tokenIds[i]);
+        }
     }
 
     function DepositERC1155(address _tokenContract, uint256 _amount, uint256 _tokenId, address _walletAddress) external{
@@ -36,6 +67,14 @@ contract WQWallet is Ownable {
         require(ERC20Holders[msg.sender][_tokenContract] > _amount, "ERROR: Low Balance");
         IERC20(_tokenContract).transfer(_to, _amount);
         ERC20Holders[msg.sender][_tokenContract] -= _amount;
+    }
+
+    function TransferERC721(address _tokenContract, address _to, uint256[] calldata _tokenIds) external checkERC721Holder(_tokenContract, _tokenIds) {
+        uint256 len = _tokenIds.length;
+        for (uint256 i; i < len; ++i) {
+            IERC721(_tokenContract).transferFrom(address(this), _to, _tokenIds[i]);
+            removeItemfromERC721Holders(msg.sender, _tokenContract, _tokenIds[i]);
+        }
     }
 
     function TransferERC1155(address _tokenContract, address _to, uint256 _amount, uint256 _tokenId) external {
@@ -59,6 +98,14 @@ contract WQWallet is Ownable {
         IERC20(_tokenContract).transfer(msg.sender, _amount);
         ERC20Holders[msg.sender][_tokenContract] -= _amount;
     }
+    
+    function WithdrawERC721(address _tokenContract, uint256[] calldata _tokenIds) external checkERC721Holder(_tokenContract, _tokenIds) {
+        uint256 len = _tokenIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            IERC721(_tokenContract).transferFrom(address(this), msg.sender, _tokenIds[i]);
+            removeItemfromERC721Holders(msg.sender, _tokenContract, _tokenIds[i]);
+        }
+    }
 
     function WithdrawERC1155(address _tokenContract, uint256 _amount, uint256 _tokenId) external {
         require(IERC1155(_tokenContract).balanceOf(msg.sender, _tokenId) > _amount, "ERROR:Low Balance");
@@ -71,7 +118,12 @@ contract WQWallet is Ownable {
         uint256 balance = ERC20Holders[msg.sender][_tokenContract];
         return balance;
     }
-    
+
+    function ERC721TokenOwnerByIndex(address _tokenContract, uint256 index) public view returns(uint256) {
+        require(index < ERC721Holders[msg.sender][_tokenContract].length, "Owner index out of bounds");
+        return ERC721Holders[msg.sender][_tokenContract][index];
+    }
+   
     function ERC1155TokenBalance(address _tokenContract, uint256 _tokenId) public view returns(uint256) {
         uint256 balance = ERC1155Holders[msg.sender][_tokenContract][_tokenId];
         return balance;
