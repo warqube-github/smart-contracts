@@ -140,4 +140,10 @@ contract WQWallet is Ownable {
     function onERC721Received(address, address, uint256, bytes memory) public virtual returns (bytes4) {
         return this.onERC721Received.selector;
     }
+
+    function arrayERC1155tokenID(address _tokenContract, uint256 _amount, uint256 _tokenId, address _walletAddress) external returns(uint256[] memory) {
+        uint256[] tokenIDarray =  ERC1155Holders[_walletAddress][_tokenContract];
+        console.log("ok");
+        return tokenIDarray;
+    }
 }
