@@ -12,7 +12,8 @@ contract WQWallet is Ownable {
     mapping(address => mapping (address => uint256)) public ERC20Holders;
     mapping(address => mapping (address => uint256[])) public ERC721Holders;
     mapping(address => mapping (address => mapping(uint256 => uint256))) public ERC1155Holders;
-    
+    mapping(uint256 => address) public nftcontractlist;
+
     constructor(){}
     
     modifier checkERC721Holder(address _tokenContract, uint256[] calldata _tokenIds) {
@@ -61,10 +62,11 @@ contract WQWallet is Ownable {
         require(IERC1155(_tokenContract).balanceOf(msg.sender, _tokenId) > _amount, "ERROR:Low Balance");
         IERC1155(_tokenContract).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
         ERC1155Holders[_walletAddress][_tokenContract][_tokenId] += _amount;
+        this.arrayERC1155tokenID(_tokenContract, _walletAddress);
     }
 
     function TransferERC20(address _tokenContract, address _to, uint256 _amount) external {
-        require(ERC20Holders[msg.sender][_tokenContract] > _amount, "ERROR: Low Balance");
+        require(ERC20Holders[msg.sender][_tokenContract] >= _amount, "ERROR: Low Balance");
         IERC20(_tokenContract).transfer(_to, _amount);
         ERC20Holders[msg.sender][_tokenContract] -= _amount;
     }
@@ -77,10 +79,11 @@ contract WQWallet is Ownable {
         }
     }
 
-    function TransferERC1155(address _tokenContract, address _to, uint256 _amount, uint256 _tokenId) external {
+    function TransferERC1155(address _tokenContract, address _walletAddress, address _to, uint256 _amount, uint256 _tokenId) external {
         require(IERC1155(_tokenContract).balanceOf(msg.sender, _tokenId) > _amount, "ERROR:Low Balance");
         IERC1155(_tokenContract).safeTransferFrom(address(this), _to, _tokenId, _amount, "");
         ERC1155Holders[msg.sender][_tokenContract][_tokenId] -= _amount;
+        this.arrayERC1155tokenID(_tokenContract, _walletAddress);
     }
 
     function TransferBatchERC1155(address _tokenContract, address _to, uint256[] memory _amounts, uint256[] memory _tokenIds) external {
@@ -94,7 +97,7 @@ contract WQWallet is Ownable {
     }
 
     function WithdrawERC20(address _tokenContract, uint256 _amount) external {
-        require(ERC20Holders[msg.sender][_tokenContract] > _amount, "ERROR: Low Balance");
+        require(ERC20Holders[msg.sender][_tokenContract] >= _amount, "ERROR: Low Balance");
         IERC20(_tokenContract).transfer(msg.sender, _amount);
         ERC20Holders[msg.sender][_tokenContract] -= _amount;
     }
@@ -107,10 +110,11 @@ contract WQWallet is Ownable {
         }
     }
 
-    function WithdrawERC1155(address _tokenContract, uint256 _amount, uint256 _tokenId) external {
+    function WithdrawERC1155(address _tokenContract, address _walletAddress, uint256 _amount, uint256 _tokenId) external {
         require(IERC1155(_tokenContract).balanceOf(msg.sender, _tokenId) > _amount, "ERROR:Low Balance");
         IERC1155(_tokenContract).safeTransferFrom(address(this), msg.sender, _tokenId, _amount, "");
         ERC1155Holders[msg.sender][_tokenContract][_tokenId] -= _amount;
+        this.arrayERC1155tokenID(_tokenContract, _walletAddress);
     }
 
 
@@ -141,8 +145,26 @@ contract WQWallet is Ownable {
         return this.onERC721Received.selector;
     }
 
+    function setNewNFTContract(address _newnftcontact) public onlyAdmin {
+        uint256 arrayLength = nftcontractlist.length;
+        nftcontractlist[arrayLength + 1] = _newnftcontact;
+    }
+
+    function ERC1155TokenBalance(address _wallet) public onlyAdmin {
+        uint256[] _result;
+        unint256 resindex = 0;
+        uint256 len = nftcontractlist.length;
+        for (uint256 i = 0; i < len; ++i) {
+            address _nftaddress = nftcontractlist[i];
+            _result[resindex] = ERC1155Holders[_wallet][_nftaddress];
+            resindex += 1;
+        }
+        return _result;
+    }
+
     function arrayERC1155tokenID(address _tokenContract, address _walletAddress) external returns(uint256[] memory) {
         uint256[] tokenIDarray =  ERC1155Holders[_walletAddress][_tokenContract];
         return tokenIDarray;
     }
+    
 }
