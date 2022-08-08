@@ -154,6 +154,7 @@ contract WQWallet is Ownable {
         uint256[] _result;
         unint256 resindex = 0;
         uint256 len = nftcontractlist.length;
+        
         for (uint256 i = 0; i < len; ++i) {
             address _nftaddress = nftcontractlist[i];
             _result[resindex] = ERC1155Holders[_wallet][_nftaddress];
